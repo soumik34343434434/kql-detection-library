@@ -111,10 +111,6 @@ CI uploads the template as a build artifact.
 3. Run `python tools/validate.py && python tools/coverage.py && python -m unittest discover -s tests`.
 4. Open a pull request. CI repeats the checks.
 
-## How it was built
-
-I designed and reviewed this library, and wrote it with help from **Claude Code** (Anthropic's AI coding assistant). The rule choices reflect what I investigate as a SOC analyst: Defender endpoint alerts, phishing, and application-control events.
-
 ## License
 
 MIT
