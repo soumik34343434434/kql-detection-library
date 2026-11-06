@@ -1,0 +1,51 @@
+id: a45b7b9a-4d17-48ad-be1c-ad27de4eae2b
+name: LSASS memory dump attempt
+description: |
+  A process tried to dump LSASS memory with procdump, the comsvcs.dll MiniDump
+  export via rundll32, or a known dumping tool. An LSASS dump exposes cached
+  credentials and hashes, so this is usually a step before lateral movement.
+severity: High
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 15m
+queryPeriod: 15m
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1003.001
+query: |
+  DeviceProcessEvents
+  | where (FileName in~ ("procdump.exe", "procdump64.exe") and ProcessCommandLine has "lsass")
+      or (FileName =~ "rundll32.exe" and ProcessCommandLine has "comsvcs"
+          and (ProcessCommandLine has "MiniDump" or ProcessCommandLine contains "#24"))
+      or (ProcessCommandLine has "lsass" and ProcessCommandLine has_any ("Out-Minidump", "sekurlsa", "nanodump"))
+  | extend HashAlgorithm = "SHA256"
+  | project TimeGenerated, DeviceName, AccountDomain, AccountName, FileName, ProcessCommandLine,
+            InitiatingProcessFileName, InitiatingProcessCommandLine, SHA256, HashAlgorithm
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: NTDomain
+        columnName: AccountDomain
+  - entityType: FileHash
+    fieldMappings:
+      - identifier: Algorithm
+        columnName: HashAlgorithm
+      - identifier: Value
+        columnName: SHA256
+falsePositives:
+  - Support engineers capturing an LSASS dump for a Microsoft case; require a ticket and exclude for that window only.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1003.001 on an isolated lab VM (Defender will usually block it, which also creates an alert)."
+version: 1.0.0
+kind: Scheduled

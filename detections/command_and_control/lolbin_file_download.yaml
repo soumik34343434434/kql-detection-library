@@ -1,0 +1,51 @@
+id: 1fc8736e-6ce0-4eb9-8bd1-86ddef29000f
+name: File download with a built-in Windows tool
+description: |
+  certutil, bitsadmin or a PowerShell download cradle fetched content over HTTP(S).
+  Attackers use these signed, built-in tools to pull second-stage payloads
+  without dropping their own downloader. The first URL in the command line is
+  extracted into DownloadUrl for blocking.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CommandAndControl
+relevantTechniques:
+  - T1105
+query: |
+  DeviceProcessEvents
+  | where (FileName =~ "certutil.exe" and ProcessCommandLine has_any ("urlcache", "verifyctl") and ProcessCommandLine has "http")
+      or (FileName =~ "bitsadmin.exe" and ProcessCommandLine has_any ("/transfer", "/addfile") and ProcessCommandLine has "http")
+      or (FileName in~ ("powershell.exe", "pwsh.exe")
+          and ProcessCommandLine has_any ("DownloadFile", "DownloadString", "Invoke-WebRequest", "iwr", "Start-BitsTransfer")
+          and ProcessCommandLine has "http")
+  | extend DownloadUrl = extract(@"(https?://[^\s'""]+)", 1, ProcessCommandLine)
+  | project TimeGenerated, DeviceName, AccountDomain, AccountName, FileName, ProcessCommandLine, DownloadUrl,
+            InitiatingProcessFileName, InitiatingProcessCommandLine
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: NTDomain
+        columnName: AccountDomain
+  - entityType: URL
+    fieldMappings:
+      - identifier: Url
+        columnName: DownloadUrl
+falsePositives:
+  - Admin scripts that use Invoke-WebRequest to fetch installers from internal or vendor sites; allow-list those URLs.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1105 (certutil and bitsadmin download tests) on a lab VM."
+version: 1.0.0
+kind: Scheduled

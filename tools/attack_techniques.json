@@ -1,0 +1,21 @@
+{
+  "_comment": "Subset of MITRE ATT&CK Enterprise used to validate relevantTechniques. Add a technique here (ID, name, tactics in Sentinel naming) before using it in a rule.",
+  "techniques": {
+    "T1003.001": {"name": "OS Credential Dumping: LSASS Memory", "tactics": ["CredentialAccess"]},
+    "T1027": {"name": "Obfuscated Files or Information", "tactics": ["DefenseEvasion"]},
+    "T1053.005": {"name": "Scheduled Task/Job: Scheduled Task", "tactics": ["Execution", "Persistence", "PrivilegeEscalation"]},
+    "T1059.001": {"name": "Command and Scripting Interpreter: PowerShell", "tactics": ["Execution"]},
+    "T1070.001": {"name": "Indicator Removal: Clear Windows Event Logs", "tactics": ["DefenseEvasion"]},
+    "T1098": {"name": "Account Manipulation", "tactics": ["Persistence", "PrivilegeEscalation"]},
+    "T1105": {"name": "Ingress Tool Transfer", "tactics": ["CommandAndControl"]},
+    "T1110.001": {"name": "Brute Force: Password Guessing", "tactics": ["CredentialAccess"]},
+    "T1136.001": {"name": "Create Account: Local Account", "tactics": ["Persistence"]},
+    "T1204.001": {"name": "User Execution: Malicious Link", "tactics": ["Execution"]},
+    "T1204.002": {"name": "User Execution: Malicious File", "tactics": ["Execution"]},
+    "T1490": {"name": "Inhibit System Recovery", "tactics": ["Impact"]},
+    "T1547.001": {"name": "Boot or Logon Autostart Execution: Registry Run Keys / Startup Folder", "tactics": ["Persistence", "PrivilegeEscalation"]},
+    "T1562.001": {"name": "Impair Defenses: Disable or Modify Tools", "tactics": ["DefenseEvasion"]},
+    "T1566.001": {"name": "Phishing: Spearphishing Attachment", "tactics": ["InitialAccess"]},
+    "T1566.002": {"name": "Phishing: Spearphishing Link", "tactics": ["InitialAccess"]}
+  }
+}

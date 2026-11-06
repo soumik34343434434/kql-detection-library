@@ -1,0 +1,50 @@
+id: 9ba13a2b-a567-4fe2-a10c-7fb623af1891
+name: Registry Run key pointing to a script host or user-writable path
+description: |
+  A Run or RunOnce value was set to launch a script host or LOLBin, a URL, or a
+  file in a user-writable folder. Run keys start the program at every logon and
+  are one of the most common persistence methods.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceRegistryEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1547.001
+query: |
+  let runKeys = dynamic([@"\Software\Microsoft\Windows\CurrentVersion\Run",
+      @"\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+      @"\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run"]);
+  let userWritable = dynamic([@"\AppData\", @"\Temp\", @"\Users\Public\", @"\ProgramData\"]);
+  let launchers = dynamic(["powershell", "mshta", "rundll32", "regsvr32", "wscript", "cscript", "http"]);
+  DeviceRegistryEvents
+  | where ActionType == "RegistryValueSet"
+  | where RegistryKey has_any (runKeys)
+  | where RegistryValueData has_any (userWritable) or RegistryValueData has_any (launchers)
+  | where InitiatingProcessFileName !in~ ("msiexec.exe", "OneDriveSetup.exe")
+  | project TimeGenerated, DeviceName, InitiatingProcessAccountDomain, InitiatingProcessAccountName, RegistryKey,
+            RegistryValueName, RegistryValueData, InitiatingProcessFileName, InitiatingProcessCommandLine
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: InitiatingProcessAccountName
+      - identifier: NTDomain
+        columnName: InitiatingProcessAccountDomain
+falsePositives:
+  - Per-user apps installed in AppData (chat clients, updaters) register Run keys; exclude by RegistryValueName after review.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1547.001 on a lab VM."
+version: 1.0.0
+kind: Scheduled

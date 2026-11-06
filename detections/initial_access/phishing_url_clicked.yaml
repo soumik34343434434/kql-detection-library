@@ -1,0 +1,52 @@
+id: 7842a676-77b2-44f7-81aa-268d187d0fa1
+name: User clicked a URL later flagged as phishing or malware
+description: |
+  Safe Links recorded a click that was allowed (or clicked through a warning) on
+  a URL whose verdict is phishing or malware. These users may have entered
+  credentials or run a payload; the email that delivered the link is joined in
+  so the analyst can purge it from other mailboxes.
+severity: High
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - UrlClickEvents
+      - EmailEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - InitialAccess
+  - Execution
+relevantTechniques:
+  - T1566.002
+  - T1204.001
+query: |
+  UrlClickEvents
+  | where ActionType == "ClickAllowed" or IsClickedThrough == true
+  | where ThreatTypes has_any ("Phish", "Malware")
+  | join kind=leftouter (
+      EmailEvents
+      | project NetworkMessageId, Subject, SenderFromAddress, SenderFromDomain
+    ) on NetworkMessageId
+  | project TimeGenerated, AccountUpn, Url, ActionType, IsClickedThrough, ThreatTypes, IPAddress, Workload,
+            NetworkMessageId, Subject, SenderFromAddress, SenderFromDomain
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: AccountUpn
+  - entityType: URL
+    fieldMappings:
+      - identifier: Url
+        columnName: Url
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: IPAddress
+falsePositives:
+  - Security staff deliberately opening reported links during triage; exclude the SOC's own accounts.
+testing:
+  - "Not reproducible with Atomic Red Team. Validate with a Defender for Office 365 attack simulation (phishing training campaign)."
+version: 1.0.0
+kind: Scheduled

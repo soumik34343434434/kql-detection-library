@@ -1,0 +1,126 @@
+{
+  "name": "kql-detection-library coverage",
+  "versions": {
+    "layer": "4.5"
+  },
+  "domain": "enterprise-attack",
+  "description": "12 KQL detections for Microsoft Sentinel / Defender XDR. Score = number of rules.",
+  "techniques": [
+    {
+      "techniqueID": "T1003.001",
+      "score": 1,
+      "comment": "LSASS memory dump attempt",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1027",
+      "score": 1,
+      "comment": "PowerShell launched with an encoded command",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1053.005",
+      "score": 1,
+      "comment": "Scheduled task created with a script host or user-writable path",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1059.001",
+      "score": 1,
+      "comment": "PowerShell launched with an encoded command",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1070.001",
+      "score": 1,
+      "comment": "Windows Security event log cleared",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1098",
+      "score": 1,
+      "comment": "Local account created and added to Administrators within 1 hour",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1105",
+      "score": 1,
+      "comment": "File download with a built-in Windows tool",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1110.001",
+      "score": 1,
+      "comment": "Successful logon after repeated failures from the same IP",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1136.001",
+      "score": 1,
+      "comment": "Local account created and added to Administrators within 1 hour",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1204.001",
+      "score": 1,
+      "comment": "User clicked a URL later flagged as phishing or malware",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1490",
+      "score": 1,
+      "comment": "Shadow copies or backups deleted (ransomware precursor)",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1547.001",
+      "score": 1,
+      "comment": "Registry Run key pointing to a script host or user-writable path",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1562.001",
+      "score": 1,
+      "comment": "Microsoft Defender protection disabled or excluded",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1566.001",
+      "score": 1,
+      "comment": "Malicious attachment reached a mailbox",
+      "enabled": true,
+      "showSubtechniques": true
+    },
+    {
+      "techniqueID": "T1566.002",
+      "score": 1,
+      "comment": "User clicked a URL later flagged as phishing or malware",
+      "enabled": true,
+      "showSubtechniques": true
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#d6e9ff",
+      "#1f6feb"
+    ],
+    "minValue": 0,
+    "maxValue": 1
+  },
+  "legendItems": [],
+  "hideDisabled": false,
+  "showTacticRowBackground": false
+}

@@ -1,0 +1,48 @@
+id: 905088ba-7014-41d3-82eb-22b2e70c252f
+name: PowerShell launched with an encoded command
+description: |
+  PowerShell was started with -EncodedCommand (or any abbreviation such as -enc
+  or -e) and a Base64 payload. The query decodes the UTF-16LE payload into
+  DecodedCommand so the analyst sees the real command without running anything.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Execution
+  - DefenseEvasion
+relevantTechniques:
+  - T1059.001
+  - T1027
+query: |
+  DeviceProcessEvents
+  | where FileName in~ ("powershell.exe", "pwsh.exe", "powershell_ise.exe")
+  | where ProcessCommandLine matches regex @"(?i)\s-e[ncodema]*\s+[A-Za-z0-9+/=]{20,}"
+  | extend EncodedPayload = extract(@"(?i)\s-e[ncodema]*\s+([A-Za-z0-9+/=]{20,})", 1, ProcessCommandLine)
+  // -EncodedCommand is UTF-16LE: decode, then strip the interleaved null bytes
+  | extend DecodedCommand = replace_regex(base64_decode_tostring(EncodedPayload), @"\x00", "")
+  | where InitiatingProcessFileName !in~ ("SenseIR.exe", "MsSense.exe")
+  | project TimeGenerated, DeviceName, AccountDomain, AccountName, ProcessCommandLine, DecodedCommand,
+            InitiatingProcessFileName, InitiatingProcessCommandLine
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: NTDomain
+        columnName: AccountDomain
+falsePositives:
+  - Management agents (SCCM/Intune scripts, some RMM tools) that pass encoded commands; review DecodedCommand and exclude by InitiatingProcessFileName.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1059.001 (encoded command tests) on a lab VM."
+version: 1.0.0
+kind: Scheduled

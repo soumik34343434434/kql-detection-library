@@ -1,0 +1,58 @@
+id: 3764ffae-11d9-467f-bbe5-8a04734278b8
+name: Successful logon after repeated failures from the same IP
+description: |
+  An IP address produced 10 or more failed logons (4625) against a host and then
+  logged on successfully (4624, network or RDP) within the same window. This is
+  the point where password guessing turns into access, so it is worth more than
+  a plain failed-logon threshold.
+severity: High
+requiredDataConnectors:
+  - connectorId: WindowsSecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 30m
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - CredentialAccess
+relevantTechniques:
+  - T1110.001
+query: |
+  let failureThreshold = 10;
+  let window = 30m;
+  let failures = SecurityEvent
+      | where EventID == 4625 and AccountType =~ "User"
+      | where isnotempty(IpAddress) and IpAddress !in ("-", "127.0.0.1", "::1")
+      | summarize FailedCount = count(), FirstFailure = min(TimeGenerated), LastFailure = max(TimeGenerated),
+                  TargetedAccounts = make_set(TargetAccount, 20)
+          by IpAddress, Computer, bin(TimeGenerated, window)
+      | where FailedCount >= failureThreshold;
+  let successes = SecurityEvent
+      | where EventID == 4624 and LogonType in (3, 10)
+      | project SuccessTime = TimeGenerated, IpAddress, Computer, SuccessfulAccount = TargetAccount, LogonType;
+  failures
+  | join kind=inner successes on IpAddress, Computer
+  | where SuccessTime between (FirstFailure .. (LastFailure + window))
+  | summarize arg_min(SuccessTime, *) by IpAddress, Computer, SuccessfulAccount
+  | project SuccessTime, Computer, IpAddress, SuccessfulAccount, LogonType, FailedCount, FirstFailure, LastFailure, TargetedAccounts
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: SuccessfulAccount
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: IpAddress
+falsePositives:
+  - A user who forgot a recently changed password and then gets it right (low FailedCount, single account).
+  - Vulnerability scanners or monitoring tools with stale credentials; exclude their source IPs.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1110.001 on a lab VM, or 10+ wrong RDP passwords followed by the right one."
+version: 1.0.0
+kind: Scheduled

@@ -1,0 +1,54 @@
+id: f0c1076c-5697-4dde-9489-bac761a612c1
+name: Malicious attachment reached a mailbox
+description: |
+  An inbound email whose attachment has a malware or phishing verdict was
+  delivered to the inbox or junk folder instead of being blocked. Junk still
+  counts: users open it. The output carries the SHA256 for an endpoint hunt
+  and the NetworkMessageId for a purge.
+severity: High
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - EmailAttachmentInfo
+      - EmailEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - InitialAccess
+relevantTechniques:
+  - T1566.001
+query: |
+  EmailAttachmentInfo
+  | where ThreatTypes has_any ("Malware", "Phish")
+  | join kind=inner (
+      EmailEvents
+      | where EmailDirection == "Inbound"
+      | where DeliveryAction in ("Delivered", "Junked")
+      | project NetworkMessageId, RecipientEmailAddress, Subject, SenderIPv4, DeliveryAction, DeliveryLocation
+    ) on NetworkMessageId, RecipientEmailAddress
+  | extend HashAlgorithm = "SHA256"
+  | project TimeGenerated, RecipientEmailAddress, SenderFromAddress, SenderIPv4, Subject, FileName, FileType,
+            SHA256, HashAlgorithm, ThreatTypes, ThreatNames, DeliveryAction, DeliveryLocation, NetworkMessageId
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: RecipientEmailAddress
+  - entityType: FileHash
+    fieldMappings:
+      - identifier: Algorithm
+        columnName: HashAlgorithm
+      - identifier: Value
+        columnName: SHA256
+  - entityType: IP
+    fieldMappings:
+      - identifier: Address
+        columnName: SenderIPv4
+falsePositives:
+  - Messages already removed by Zero-hour auto purge (ZAP) after delivery; check the post-delivery events before escalating.
+testing:
+  - "Send the EICAR test file to a lab mailbox with a policy that delivers to junk, or use a Defender for Office 365 attack simulation."
+version: 1.0.0
+kind: Scheduled

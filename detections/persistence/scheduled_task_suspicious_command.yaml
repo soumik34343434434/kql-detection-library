@@ -1,0 +1,53 @@
+id: ba3466da-acde-4ba9-8b33-dfe95812b10e
+name: Scheduled task created with a script host or user-writable path
+description: |
+  schtasks.exe /create was run with a command that launches a script host or
+  LOLBin, downloads from the web, or runs from a user-writable folder (AppData,
+  Temp, Users\Public). Scheduled tasks are a common way to make malware survive
+  reboots.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 1h
+queryPeriod: 1h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Execution
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1053.005
+query: |
+  let suspiciousTerms = dynamic(["powershell", "pwsh", "mshta", "rundll32", "regsvr32", "wscript", "cscript",
+      "certutil", "bitsadmin", "http", "AppData", "Temp", "Public"]);
+  DeviceProcessEvents
+  | where FileName =~ "schtasks.exe"
+  | where ProcessCommandLine has "/create"
+  | where ProcessCommandLine has_any (suspiciousTerms)
+  | where InitiatingProcessFileName !in~ ("msiexec.exe", "TiWorker.exe")
+  | project TimeGenerated, DeviceName, AccountDomain, AccountName, ProcessCommandLine,
+            InitiatingProcessFileName, InitiatingProcessCommandLine, SHA256
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: NTDomain
+        columnName: AccountDomain
+  - entityType: Process
+    fieldMappings:
+      - identifier: CommandLine
+        columnName: ProcessCommandLine
+falsePositives:
+  - Software updaters that register tasks from AppData (browsers, collaboration tools); exclude by InitiatingProcessFileName after review.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1053.005 on a lab VM."
+version: 1.0.0
+kind: Scheduled

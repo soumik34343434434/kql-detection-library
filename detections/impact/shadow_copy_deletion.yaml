@@ -1,0 +1,47 @@
+id: b88da29d-83f1-4972-acaf-966fac235b02
+name: Shadow copies or backups deleted (ransomware precursor)
+description: |
+  vssadmin, wmic, wbadmin, bcdedit or PowerShell was used to delete shadow
+  copies, shrink shadow storage, delete the backup catalog or disable recovery.
+  Ransomware does this minutes before encrypting so victims cannot restore.
+severity: High
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 5m
+queryPeriod: 15m
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Impact
+relevantTechniques:
+  - T1490
+query: |
+  DeviceProcessEvents
+  | where (FileName =~ "vssadmin.exe" and ProcessCommandLine has "delete" and ProcessCommandLine has "shadows")
+      or (FileName =~ "vssadmin.exe" and ProcessCommandLine has "resize" and ProcessCommandLine has "shadowstorage")
+      or (FileName =~ "wmic.exe" and ProcessCommandLine has "shadowcopy" and ProcessCommandLine has "delete")
+      or (FileName =~ "wbadmin.exe" and ProcessCommandLine has "delete" and ProcessCommandLine has_any ("catalog", "systemstatebackup"))
+      or (FileName =~ "bcdedit.exe" and ProcessCommandLine has_any ("recoveryenabled", "bootstatuspolicy"))
+      or (FileName in~ ("powershell.exe", "pwsh.exe") and ProcessCommandLine has "Win32_ShadowCopy"
+          and ProcessCommandLine has_any ("Delete", "Remove-CimInstance", "Remove-WmiObject"))
+  | project TimeGenerated, DeviceName, AccountDomain, AccountName, FileName, ProcessCommandLine,
+            InitiatingProcessFileName, InitiatingProcessCommandLine
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: NTDomain
+        columnName: AccountDomain
+falsePositives:
+  - Backup software rotating its own shadow copies; it normally runs as SYSTEM from its own service, so exclude that parent process only.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1490 on a disposable lab VM (it really deletes shadow copies)."
+version: 1.0.0
+kind: Scheduled

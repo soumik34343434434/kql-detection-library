@@ -1,0 +1,40 @@
+id: 754f4e0b-fa25-405e-8e01-98745343c4bc
+name: Windows Security event log cleared
+description: |
+  The Security event log was cleared (1102). Clearing logs destroys the evidence
+  an investigation depends on and is rarely part of normal administration, so
+  every occurrence should be explained.
+severity: Medium
+requiredDataConnectors:
+  - connectorId: WindowsSecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 15m
+queryPeriod: 15m
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - DefenseEvasion
+relevantTechniques:
+  - T1070.001
+query: |
+  SecurityEvent
+  | where EventID == 1102
+  | project TimeGenerated, Computer, Activity, SubjectUserName, SubjectDomainName, SubjectLogonId
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: SubjectUserName
+      - identifier: NTDomain
+        columnName: SubjectDomainName
+falsePositives:
+  - Rebuilding a lab or golden image; confirm with the change record.
+testing:
+  - "On a lab VM: wevtutil cl Security (Atomic Red Team T1070.001)."
+version: 1.0.0
+kind: Scheduled

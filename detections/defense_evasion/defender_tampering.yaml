@@ -1,0 +1,51 @@
+id: 53f8e59b-59ac-48e4-9499-5279dbc3c31c
+name: Microsoft Defender protection disabled or excluded
+description: |
+  A command disabled Microsoft Defender protections, added a scan exclusion, or
+  stopped or reconfigured the Defender services. Attackers do this right before
+  dropping a payload; tamper protection blocks some of it, but the attempt is
+  still worth an alert.
+severity: High
+requiredDataConnectors:
+  - connectorId: MicrosoftThreatProtection
+    dataTypes:
+      - DeviceProcessEvents
+queryFrequency: 15m
+queryPeriod: 15m
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - DefenseEvasion
+relevantTechniques:
+  - T1562.001
+query: |
+  DeviceProcessEvents
+  | where FileName in~ ("powershell.exe", "pwsh.exe", "cmd.exe", "reg.exe", "sc.exe")
+  | where (ProcessCommandLine has "Set-MpPreference"
+          and ProcessCommandLine has_any ("DisableRealtimeMonitoring", "DisableBehaviorMonitoring",
+              "DisableIOAVProtection", "DisableScriptScanning", "ExclusionPath", "ExclusionProcess"))
+      or (ProcessCommandLine has "Add-MpPreference"
+          and ProcessCommandLine has_any ("ExclusionPath", "ExclusionProcess", "ExclusionExtension"))
+      or (FileName =~ "reg.exe" and ProcessCommandLine has "Windows Defender"
+          and ProcessCommandLine has_any ("DisableAntiSpyware", "DisableRealtimeMonitoring"))
+      or (FileName =~ "sc.exe" and ProcessCommandLine has_any ("stop", "config", "delete")
+          and ProcessCommandLine has_any ("WinDefend", "Sense", "WdNisSvc"))
+  | project TimeGenerated, DeviceName, AccountDomain, AccountName, FileName, ProcessCommandLine,
+            InitiatingProcessFileName, InitiatingProcessCommandLine
+entityMappings:
+  - entityType: Host
+    fieldMappings:
+      - identifier: HostName
+        columnName: DeviceName
+  - entityType: Account
+    fieldMappings:
+      - identifier: Name
+        columnName: AccountName
+      - identifier: NTDomain
+        columnName: AccountDomain
+falsePositives:
+  - Approved exclusions added by IT for line-of-business software; these should go through Intune/GPO, not ad-hoc commands, so confirm with the change record.
+testing:
+  - "Atomic Red Team: Invoke-AtomicTest T1562.001 on a lab VM."
+version: 1.0.0
+kind: Scheduled

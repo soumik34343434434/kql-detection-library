@@ -1,0 +1,49 @@
+id: 86b29d34-de93-4056-9438-97eab12cb146
+name: Local account created and added to Administrators within 1 hour
+description: |
+  A new local account (4720) was added to the built-in Administrators group
+  (4732, SID S-1-5-32-544) within an hour of being created. Attackers do this to
+  keep privileged access that survives a password reset of the account they
+  first compromised.
+severity: High
+requiredDataConnectors:
+  - connectorId: WindowsSecurityEvents
+    dataTypes:
+      - SecurityEvent
+queryFrequency: 1h
+queryPeriod: 2h
+triggerOperator: gt
+triggerThreshold: 0
+tactics:
+  - Persistence
+  - PrivilegeEscalation
+relevantTechniques:
+  - T1136.001
+  - T1098
+query: |
+  let window = 1h;
+  let created = SecurityEvent
+      | where EventID == 4720
+      | project CreatedTime = TimeGenerated, Computer, NewAccount = TargetAccount, NewAccountSid = TargetSid, CreatedBy = SubjectAccount;
+  SecurityEvent
+  | where EventID == 4732
+  | where TargetSid == "S-1-5-32-544" or TargetAccount endswith @"\Administrators"
+  | project AddedTime = TimeGenerated, Computer, MemberSid, Group = TargetAccount, AddedBy = SubjectAccount
+  | join kind=inner created on $left.Computer == $right.Computer, $left.MemberSid == $right.NewAccountSid
+  | where AddedTime between (CreatedTime .. (CreatedTime + window))
+  | project AddedTime, Computer, NewAccount, NewAccountSid, Group, CreatedBy, AddedBy, CreatedTime
+entityMappings:
+  - entityType: Account
+    fieldMappings:
+      - identifier: FullName
+        columnName: NewAccount
+  - entityType: Host
+    fieldMappings:
+      - identifier: FullName
+        columnName: Computer
+falsePositives:
+  - Approved build or imaging scripts that create a local admin; exclude by CreatedBy once confirmed.
+testing:
+  - "On a lab VM: net user labadmin <password> /add, then net localgroup Administrators labadmin /add."
+version: 1.0.0
+kind: Scheduled
